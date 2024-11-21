@@ -1,0 +1,119 @@
+IV_ENTITY_NAME        Importing          Type     STRING
+IV_ENTITY_SET_NAME           Importing          Type     STRING
+IV_SOURCE_NAME      Importing          Type     STRING
+IT_KEY_TAB    Importing          Type     /IWBEP/T_MGW_NAME_VALUE_PAIR
+IO_TECH_REQUEST_CONTEXT          Importing          Type Ref To      /IWBEP/IF_MGW_REQ_ENTITY_U
+IT_NAVIGATION_PATH Importing          Type     /IWBEP/T_MGW_NAVIGATION_PATH
+IO_DATA_PROVIDER   Importing          Type Ref To      /IWBEP/IF_MGW_ENTRY_PROVIDER
+ER_ENTITY      Exporting          Type            /GKV/CL_RM90_UDCUST_MPC=>TS_XGKVXRM90_C_CATEGORYICONSCU  
+
+
+method XGKVXRM90_C_CA01_UPDATE_ENTITY.
+    "xGKVxRM90_C_CategoryIconsCust
+    DATA: lv_current_time TYPE timestampl.
+
+    GET TIME STAMP FIELD lv_current_time.
+    io_data_provider->read_entry_data( IMPORTING es_data = er_entity ).
+
+    " Kategorie ist leer -> Fehlermeldung
+    IF er_entity-category IS INITIAL OR er_entity-category EQ ''.
+        "Bitte geben Sie eine Kategorie an.
+        MESSAGE e047(/gkv/rm90_ud) INTO DATA(lv_dummy_msg).
+        /gkv/rm50_cl_odata_tools=>raise_error_message( CAST #( /iwbep/if_mgw_conv_srv_runtime~get_message_container( ) ) ).
+    ENDIF.
+
+    "Mappen in Datenbank-Update-Struktur
+    DATA(ls_db_update) = VALUE /gkv/rm90_caticc( category                   = er_entity-category
+                                                     fiori_iconname         = er_entity-fioriicon
+                                                     fiori_iconname_in      = er_entity-fioriiconin
+                                                     fiori_iconname_out     = er_entity-fioriiconout
+                                                     lchg_date_time         = lv_current_time
+                                                     lchg_uname             = sy-uname
+                                                     ).
+
+    " Kategorie ist unbekannt -> Fehlermeldung
+    SELECT SINGLE category
+      FROM crmc_act_categor
+      INTO @DATA(ls_caticons)
+      WHERE category = @er_entity-category.
+    IF sy-subrc <> 0.
+        "Bitte geben Sie eine gültige Kategorie an.
+        MESSAGE e048(/gkv/rm90_ud) INTO lv_dummy_msg.
+        /gkv/rm50_cl_odata_tools=>raise_error_message( CAST #( /iwbep/if_mgw_conv_srv_runtime~get_message_container( ) ) ).
+    ENDIF.
+
+    "Update
+    MODIFY /gkv/rm90_caticc FROM ls_db_update.
+    write_single_cust_transport( iv_tabkey            = |{ sy-mandt WIDTH = 3 }{ ls_db_update-category WIDTH = 3 }|
+                                 iv_tablename         = '/GKV/RM90_CATICC'
+                                 iv_transport         = er_entity-transport ).
+  endmethod.   
+
+
+
+
+ io_data_provider->read_entry_data( IMPORTING es_data = er_entity ).
+
+    SELECT SINGLE fiori_iconname
+      FROM /GKV/RM90_ICONCC
+      INTO @DATA(lv_dbkey)
+      WHERE fiori_iconname = @er_entity-fioriicon.
+    IF sy-subrc = 0.
+      "Key &1 ist bereits vorhanden.
+      MESSAGE e024(/gkv/rm90_ud) WITH lv_dbkey INTO DATA(lv_dummy_msg).
+      /gkv/rm50_cl_odata_tools=>raise_error_message( CAST #( /iwbep/if_mgw_conv_srv_runtime~get_message_container( ) ) ).
+    ENDIF.
+
+    modify_icons( er_entity ).  
+
+types:
+   TS_XGKVXRM90_C_ICONSVHTYPE type /GKV/RM90_C00128 .
+  types:
+   TT_XGKVXRM90_C_ICONSVHTYPE type standard table of TS_XGKVXRM90_C_ICONSVHTYPE .  
+
+
+METHOD MODIFY_ICONS.
+    "xGKVxRM90_C_IconsCust
+    DATA: lv_current_time TYPE timestampl.
+    GET TIME STAMP FIELD lv_current_time.
+
+    " Iconname ist leer -> Fehlermeldung
+    IF is_icon-fioriicon IS INITIAL OR is_icon-fioriicon EQ '' OR is_icon-fioriicon EQ ' '.
+        "Bitte geben Sie ein Icon an.
+        MESSAGE e050(/gkv/rm90_ud) INTO DATA(lv_dummy_msg).
+        /gkv/rm50_cl_odata_tools=>raise_error_message( CAST #( /iwbep/if_mgw_conv_srv_runtime~get_message_container( ) ) ).
+    ENDIF.
+
+    "Mappen in Datenbank-Update-Struktur
+    DATA(ls_db_update) = VALUE /gkv/rm90_iconcc(     fiori_iconname         = is_icon-fioriicon
+                                                     lchg_date_time         = lv_current_time
+                                                     lchg_uname             = sy-uname
+                                                     ).
+
+    " Name des Icons hat mehr als 100 Zeichen -> Fehlermeldung
+    DATA(lv_length) = STRLEN( is_icon-fioriicon ).
+    IF lv_length < 1 OR lv_length > 100.
+        "Der Name des Icons hat mehr als 100 Zeichen
+        MESSAGE e049(/gkv/rm90_ud) INTO lv_dummy_msg.
+        /gkv/rm50_cl_odata_tools=>raise_error_message( CAST #( /iwbep/if_mgw_conv_srv_runtime~get_message_container( ) ) ).
+    ENDIF.
+
+
+    " >> Eintrag aus DB Tabelle löschen
+    IF is_icon-deleteflag = abap_true.
+      DELETE FROM /gkv/rm90_iconcc WHERE fiori_iconname  = is_icon-fioriicon.
+
+      write_single_cust_transport( iv_tabkey            = |{ sy-mandt WIDTH = 3 }{ is_icon-fioriicon WIDTH = 100 }|
+                                   iv_tablename         = '/GKV/RM90_ICONCC'
+                                   iv_transport         = is_icon-transport ).
+      RETURN.
+    ENDIF.
+
+    " >> Eintrag in DB Tabelle aktualisieren oder neu anlegen
+    "Update
+    MODIFY /gkv/rm90_iconcc FROM ls_db_update.
+    write_single_cust_transport( iv_tabkey            = |{ sy-mandt WIDTH = 3 }{ ls_db_update-fiori_iconname WIDTH = 100 }|
+                                 iv_tablename         = '/GKV/RM90_ICONCC'
+                                 iv_transport         = is_icon-transport ).
+  ENDMETHOD.
+
