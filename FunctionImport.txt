@@ -1,0 +1,44 @@
+Wie man SAPUI5 ein Function Import eines OData Services aufruft. Außerdem wird erklärt, in welcher Methode im ABAP Backend der Function Import implementiert sein muss und wie eine einfache Implementierung aussehen könnte.
+
+Beispiel: Aufruf eines Function Imports in SAPUI5
+Home.controller.js:
+
+Home.view.xml:
+
+Erklärung
+Function Import Aufruf in SAPUI5:
+
+Die Methode callFunction des OData Modells wird verwendet, um den Function Import /GetProductDetails aufzurufen.
+Die Methode GET wird verwendet, und die URL-Parameter werden übergeben.
+Erfolgs- und Fehler-Callbacks werden definiert, um den Benutzer über den Status der Operation zu informieren.
+Button in der View:
+
+Ein Button mit dem Text "Get Product Details" wird in der XML View definiert und mit der onCallFunctionImport Funktion im Controller verknüpft.
+Implementierung des Function Imports im ABAP Backend
+Der Function Import muss in einer ABAP-Klasse implementiert werden, die von CL_ABAP_ODATA_V2 erbt. Die Methode GET_ENTITY oder GET_ENTITYSET wird verwendet, um die Logik des Function Imports zu implementieren.
+
+Beispiel:
+
+Definition des Function Imports im Service Builder (SEGW):
+
+Öffnen Sie den Service Builder (SEGW).
+Erstellen Sie einen neuen Function Import mit dem Namen GetProductDetails.
+Definieren Sie die Eingabeparameter (z.B. ProductID) und die Rückgabestruktur.
+Implementierung der Methode im ABAP Backend:
+
+Implementieren Sie die Methode GET_ENTITY in der zugehörigen Data Provider Extension (DPC) Klasse.
+ABAP Code:
+
+Erklärung
+Definition des Function Imports:
+
+Der Function Import GetProductDetails wird im Service Builder (SEGW) definiert.
+Eingabeparameter und Rückgabestruktur werden festgelegt.
+Implementierung der Methode:
+
+Die Methode get_product_details wird in der DPC-Klasse implementiert.
+Die Produktdetails werden aus der Datenbanktabelle zproduct_details abgerufen.
+Wenn das Produkt gefunden wird, werden die Details in er_entity zurückgegeben.
+Wenn das Produkt nicht gefunden wird, wird eine Ausnahme ausgelöst.
+Zusammenfassung
+Dieses Beispiel zeigt, wie man in SAPUI5 ein Function Import eines OData Services aufruft und wie die Implementierung im ABAP Backend aussieht. Durch die Verwendung der Methode callFunction in SAPUI5 und der Implementierung der Methode GET_ENTITY im ABAP Backend können Sie benutzerdefinierte Logik in Ihren OData Services nutzen.
